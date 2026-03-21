@@ -40,7 +40,7 @@ def compute_potential_payout(stake: float, side: bool, yes_stake: float, no_stak
 class MarketCreate(BaseModel):
     title: str
     description: Optional[str] = None
-    category: str = "crypto"
+    category: str = "crypto"  # crypto|defi|sport|politica|macro|tech|entertainment|scienza|nft|geopolitica|altro
     asset_symbol: Optional[str] = None
     resolution_type: str = "manual"
     resolution_rule: Optional[str] = None
