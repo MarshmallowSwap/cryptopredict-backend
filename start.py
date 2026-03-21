@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Avvia il server FastAPI + scheduler cron per:
-  - Accrue yield giornaliero (ogni 24h alle 00:05)
-  - Auto-resolve mercati scaduti (ogni 5 minuti)
+Avvia il server FastAPI + scheduler cron:
+  - Yield giornaliero (ogni 24h alle 00:05)
+  - Auto-resolve mercati scaduti (ogni 5 min)
+    → crypto/macro/defi: prezzo Binance/CoinGecko → on-chain
+    → sport/politica/altro: log + notifica admin panel
 """
 import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -10,22 +12,10 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from app.main import app
 from app.services.yield_engine import accrue_daily_yield
+from app.services.auto_resolver import run_auto_resolver
 from app.core.config import settings
-import asyncio
 
 scheduler = AsyncIOScheduler()
-
-async def auto_resolve_job():
-    """Chiama l'endpoint di auto-resolve ogni 5 min."""
-    import httpx
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            await client.post(
-                "http://localhost:8000/api/v1/admin/cron/resolve-expired",
-                params={"admin_token": settings.ADMIN_TOKEN}
-            )
-    except Exception as e:
-        print(f"[CRON] Auto-resolve error: {e}")
 
 @app.on_event("startup")
 async def startup():
@@ -38,13 +28,18 @@ async def startup():
     )
     # Auto-resolve: ogni 5 minuti
     scheduler.add_job(
-        auto_resolve_job,
+        run_auto_resolver,
         IntervalTrigger(minutes=5),
         id="auto_resolve",
         replace_existing=True,
+        max_instances=1,       # evita sovrapposizioni
+        coalesce=True,         # salta run mancati se server era offline
     )
     scheduler.start()
-    print("✅ Scheduler avviato: yield@00:05, auto-resolve ogni 5min")
+    print("✅ Scheduler avviato:")
+    print("   - yield accrual: ogni giorno 00:05")
+    print("   - auto-resolve:  ogni 5 minuti")
+    print("   - admin panel:   https://cryptopredict-chi.vercel.app/admin.html")
 
 @app.on_event("shutdown")
 async def shutdown():
