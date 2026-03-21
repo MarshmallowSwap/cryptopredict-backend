@@ -54,7 +54,7 @@ def get_w3():
     return Web3(Web3.HTTPProvider(rpc))
 
 def get_contract(w3):
-    addr = os.getenv("PREDICTION_MARKET_ADDRESS", "0x5264C5212b57ca1bf412b104165Cbd8173aD6F11")
+    addr = os.getenv("PREDICTION_MARKET_ADDRESS", "0x60D2893e04767C9cC1c7395dEA241302b96FAf2D")
     return w3.eth.contract(address=Web3.to_checksum_address(addr), abi=MARKET_ABI)
 
 def get_team_account(w3):
