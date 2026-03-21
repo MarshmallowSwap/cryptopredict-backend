@@ -283,3 +283,47 @@ async def update_market_image_by_onchain(onchain_id: int, body: MarketImageUpdat
             "status": "open"
         }).execute()
     return {"ok": True, "onchain_id": onchain_id, "image_url": body.image_url}
+
+# ── UPLOAD IMMAGINE ───────────────────────────────────────────────
+
+from fastapi import UploadFile, File
+import httpx, uuid
+
+@router.post("/upload/image")
+async def upload_market_image(
+    file: UploadFile = File(...),
+    onchain_id: Optional[int] = None
+):
+    """Carica immagine su Supabase Storage e restituisce l'URL pubblico."""
+    import os
+    supabase_url = os.getenv("SUPABASE_URL", "https://ezcnodxtqwcwwsdmwbsf.supabase.co")
+    service_key  = os.getenv("SUPABASE_SERVICE_KEY", "")
+
+    # Validazione
+    if file.content_type not in ["image/jpeg","image/png","image/webp","image/gif"]:
+        raise HTTPException(400, "Tipo file non supportato")
+
+    data = await file.read()
+    if len(data) > 1_048_576:
+        raise HTTPException(400, "File troppo grande (max 1MB)")
+
+    # Path nel bucket
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+    path = f"markets/{onchain_id or uuid.uuid4()}.{ext}"
+
+    # Upload su Supabase Storage
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{supabase_url}/storage/v1/object/market-images/{path}",
+            content=data,
+            headers={
+                "Authorization": f"Bearer {service_key}",
+                "Content-Type": file.content_type,
+                "x-upsert": "true"
+            }
+        )
+        if resp.status_code not in (200, 201):
+            raise HTTPException(500, f"Upload fallito: {resp.text}")
+
+    public_url = f"{supabase_url}/storage/v1/object/public/market-images/{path}"
+    return {"url": public_url, "path": path}
