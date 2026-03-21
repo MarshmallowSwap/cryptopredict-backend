@@ -102,6 +102,17 @@ async def get_user_stats(user_id: str):
         "staking": staking,
     }
 
+
+@router.get("/wallet/{wallet_address}")
+async def get_user_by_wallet(wallet_address: str):
+    """Cerca utente per wallet address (case-insensitive)."""
+    sb = get_supabase()
+    # Prova lowercase
+    res = sb.table("users").select("*").ilike("wallet_address", wallet_address).execute()
+    if res.data:
+        return res.data[0]
+    raise HTTPException(404, "User not found")
+
 @router.post("/{user_id}/deposit")
 async def deposit(user_id: str, body: UserDeposit):
     """Simula un deposito (in produzione: webhook NOWPayments)."""
