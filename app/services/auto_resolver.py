@@ -185,6 +185,6 @@ async def run_auto_resolver():
     if manual_needed:
         log.info(f"  → Usa admin panel: https://cryptopredict-chi.vercel.app/admin.html")
         for m in manual_needed:
-            log.info(f"    #{m['id']} [{m['category']}] "{m['question'][:50]}"")
+            log.info("    #" + str(m['id']) + " [" + m['category'] + "] " + m['question'][:50])
 
     return {"resolved": resolved_count, "manual": len(manual_needed)}
