@@ -1,42 +1,33 @@
-# CryptoPredict — Backend
+# CryptoPredict — Backend API
 
 FastAPI backend per il prediction market CryptoPredict.
 
 ## Stack
 - **FastAPI** + Uvicorn
-- **Supabase** (PostgreSQL + Auth)
-- **APScheduler** per cron jobs
-- **httpx** per price feeds (Binance + CoinGecko)
+- **Supabase** PostgreSQL (`ezcnodxtqwcwwsdmwbsf.supabase.co`)
+- **APScheduler** — yield ogni 24h, auto-resolve ogni 5min
+- **httpx** — price feeds Binance + CoinGecko
 
-## Setup VPS
+## Deploy su VPS
 
 ```bash
-# 1. Clona il repo
 git clone https://github.com/MarshmallowSwap/cryptopredict-backend
 cd cryptopredict-backend
-
-# 2. Crea virtualenv
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Installa dipendenze
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# 4. Configura .env
+# Crea .env
 cp .env.example .env
-nano .env  # compila SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_TOKEN
+nano .env   # aggiungi SUPABASE_SERVICE_KEY e ADMIN_TOKEN
 
-# 5. Esegui le migration SQL su Supabase
-# Vai su Supabase → SQL Editor → incolla supabase/migrations/001_initial_schema.sql
-
-# 6. Avvia il server
+# Avvia
 python start.py
+# → API live su http://0.0.0.0:8000
 ```
 
-## Avvio con systemd (production)
+## Setup systemd (production)
 
 ```ini
-# /etc/systemd/system/cryptopredict.service
 [Unit]
 Description=CryptoPredict API
 After=network.target
@@ -56,10 +47,9 @@ WantedBy=multi-user.target
 ```bash
 sudo systemctl enable cryptopredict
 sudo systemctl start cryptopredict
-sudo systemctl status cryptopredict
 ```
 
-## Nginx reverse proxy
+## Nginx
 
 ```nginx
 server {
@@ -72,24 +62,32 @@ server {
 }
 ```
 
-## API Endpoints
+## Endpoints
 
 | Metodo | Path | Descrizione |
 |--------|------|-------------|
+| GET | `/` | Health check |
 | GET | `/api/v1/markets` | Lista mercati |
-| GET | `/api/v1/markets/{id}` | Mercato singolo |
+| GET | `/api/v1/markets/{id}` | Mercato singolo + prezzo live |
 | POST | `/api/v1/markets` | Crea mercato |
-| POST | `/api/v1/markets/{id}/bet` | Piazza scommessa |
-| POST | `/api/v1/markets/{id}/resolve` | Risolvi mercato |
+| POST | `/api/v1/markets/{id}/bet` | Piazza scommessa YES/NO |
+| POST | `/api/v1/markets/{id}/resolve` | Risolvi + paga vincitori |
 | GET | `/api/v1/users/{id}` | Profilo utente |
 | GET | `/api/v1/users/{id}/stats` | Stats + yield share |
+| GET | `/api/v1/users/{id}/positions` | Posizioni utente |
+| GET | `/api/v1/users/{id}/transactions` | Transazioni |
 | POST | `/api/v1/users` | Crea utente |
 | POST | `/api/v1/users/{id}/deposit` | Deposita USDC |
-| GET | `/api/v1/yield/stats` | Stats yield globali |
+| GET | `/api/v1/yield/stats` | Yield globale |
 | GET | `/api/v1/yield/market/{id}` | Yield per mercato |
-| POST | `/api/v1/admin/cron/resolve-expired` | Auto-resolve (cron) |
-| POST | `/api/v1/admin/cron/accrue-yield` | Accrua yield (cron) |
+| POST | `/api/v1/admin/cron/resolve-expired` | Auto-resolve scaduti |
+| POST | `/api/v1/admin/cron/accrue-yield` | Accrua yield |
+| GET | `/api/v1/admin/markets/pending` | Mercati da risolvere |
+| POST | `/api/v1/admin/markets/{id}/cancel` | Cancella + rimborsa |
 
-## Cron Jobs automatici
-- **Ogni 5 min**: auto-resolve mercati price_target scaduti
-- **00:05 ogni giorno**: accrua yield sui pool aperti + distribuisce rewards agli staker
+## Cron automatici
+- **Ogni 5 min** — auto-resolve mercati `price_target` scaduti
+- **00:05 ogni giorno** — accrua yield + distribuisce rewards staker CPRED
+
+## Database (Supabase)
+8 tabelle: `users`, `markets`, `positions`, `transactions`, `yield_snapshots`, `staking_positions`, `presale_purchases`, `secondary_listings`
