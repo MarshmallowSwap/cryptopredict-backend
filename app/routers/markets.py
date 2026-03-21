@@ -50,6 +50,7 @@ class MarketCreate(BaseModel):
     creator_id: Optional[str] = None
     image_url: Optional[str] = None
     onchain_id: Optional[int] = None
+    currency: Optional[str] = "ETH"  # ETH|USDC|USDT|CPRED
 
 class MarketImageUpdate(BaseModel):
     image_url: str
