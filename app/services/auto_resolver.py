@@ -146,7 +146,7 @@ async def run_auto_resolver():
             if market["expiresAt"] > now:
                 continue
 
-            log.info(f"  📍 Mercato #{market_id} scaduto: "{market['question'][:60]}"")
+            log.info(f"  Mercato #{market_id} scaduto: '{market['question'][:60]}'")
 
             cat = market["category"]
 
@@ -155,7 +155,7 @@ async def run_auto_resolver():
                 result = await auto_resolve_price_market(w3, contract, account, market)
                 if result["action"] == "resolved":
                     resolved_count += 1
-                    log.info(f"  ✅ #{market_id} risolto automaticamente ({result['tx'][:10]}...)")
+                    log.info(f"  OK #{market_id} risolto automaticamente ({result['tx'][:10]}...)")
                     # Aggiorna anche Supabase
                     try:
                         sb = get_supabase()
@@ -168,11 +168,11 @@ async def run_auto_resolver():
                 elif result["action"] == "skip":
                     # Nessun target price — aggiungi alla lista manuale
                     manual_needed.append(market)
-                    log.warning(f"  ⚠️  #{market_id} ({cat}) senza target price — richiede risoluzione manuale")
+                    log.warning(f"  #{market_id} ({cat}) senza target price - richiede risoluzione manuale")
             else:
                 # Sport, politica, entertainment, scienza, geopolitica → manuale
                 manual_needed.append(market)
-                log.info(f"  👤 #{market_id} ({cat}) → richiede risoluzione manuale dal team")
+                log.info(f"  #{market_id} ({cat}) - richiede risoluzione manuale dal team")
 
         except Exception as e:
             log.error(f"  Errore mercato #{market_id}: {e}")
