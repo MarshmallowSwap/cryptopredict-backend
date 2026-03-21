@@ -48,6 +48,11 @@ class MarketCreate(BaseModel):
     target_direction: Optional[str] = None
     expires_at: datetime
     creator_id: Optional[str] = None
+    image_url: Optional[str] = None
+    onchain_id: Optional[int] = None
+
+class MarketImageUpdate(BaseModel):
+    image_url: str
 
 class BetPlace(BaseModel):
     user_id: str
@@ -237,3 +242,44 @@ async def resolve_market(market_id: str, outcome: bool, admin_token: str = ""):
         "winners": len(positions),
         "total_paid_out": paid_out,
     }
+
+@router.patch("/{market_id}/image")
+async def update_market_image(market_id: str, body: MarketImageUpdate):
+    """Aggiorna l'image_url di un mercato."""
+    sb = get_supabase()
+    res = sb.table("markets").update({"image_url": body.image_url}).eq("id", market_id).execute()
+    if not res.data:
+        raise HTTPException(404, "Market not found")
+    return {"ok": True, "image_url": body.image_url}
+
+@router.get("/images/all")
+async def get_all_images():
+    """Restituisce {onchain_id: image_url} per tutti i mercati con immagine."""
+    sb = get_supabase()
+    res = sb.table("markets").select("onchain_id,image_url").not_.is_("image_url", "null").execute()
+    result = {}
+    for row in (res.data or []):
+        if row.get("onchain_id") is not None:
+            result[row["onchain_id"]] = row["image_url"]
+    return result
+
+@router.patch("/onchain/{onchain_id}/image")
+async def update_market_image_by_onchain(onchain_id: int, body: MarketImageUpdate):
+    """Aggiorna image_url per un mercato tramite il suo ID on-chain."""
+    sb = get_supabase()
+    # Cerca il mercato con quell'onchain_id
+    res = sb.table("markets").select("id").eq("onchain_id", onchain_id).execute()
+    if res.data:
+        sb.table("markets").update({"image_url": body.image_url}).eq("onchain_id", onchain_id).execute()
+    else:
+        # Crea un record placeholder
+        sb.table("markets").insert({
+            "onchain_id": onchain_id,
+            "image_url": body.image_url,
+            "title": f"Market #{onchain_id}",
+            "category": "crypto",
+            "resolution_type": "manual",
+            "expires_at": "2026-12-31T00:00:00+00:00",
+            "status": "open"
+        }).execute()
+    return {"ok": True, "onchain_id": onchain_id, "image_url": body.image_url}
