@@ -3,32 +3,38 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import markets, positions, users, payouts, admin
 from app.services.yield_engine import router as yield_router
 from app.core.config import settings
+from app.core.recovery import MODE, RecoveryGuard
 
-app = FastAPI(
-    title="CryptoPredict API",
-    version="1.0.0",
-    description="Prediction market backend — markets, pools, positions, yield, payouts"
-)
+app = FastAPI(title="CryptoPredict API", version="1.1.0-recovery",
+              description="Read-only recovery API. Legacy balances are unverified; monetary writes are disabled.")
+app.state.recovery_admin_token = settings.RECOVERY_ADMIN_TOKEN
+app.add_middleware(RecoveryGuard, admin_token=settings.RECOVERY_ADMIN_TOKEN)
+# Last added middleware is outermost; valid CORS preflights stop here.
+app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS,
+                   allow_credentials=False, allow_methods=["GET", "HEAD", "OPTIONS"],
+                   allow_headers=["Authorization", "Content-Type"])
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(markets.router,   prefix="/api/v1/markets",   tags=["Markets"])
+app.include_router(markets.router, prefix="/api/v1/markets", tags=["Markets"])
 app.include_router(positions.router, prefix="/api/v1/positions", tags=["Positions"])
-app.include_router(users.router,     prefix="/api/v1/users",     tags=["Users"])
-app.include_router(payouts.router,   prefix="/api/v1/payouts",   tags=["Payouts"])
-app.include_router(yield_router,     prefix="/api/v1/yield",     tags=["Yield"])
-app.include_router(admin.router,     prefix="/api/v1/admin",     tags=["Admin"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
+app.include_router(payouts.router, prefix="/api/v1/payouts", tags=["Payouts"])
+app.include_router(yield_router, prefix="/api/v1/yield", tags=["Yield"])
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+
 
 @app.get("/")
 async def root():
-    return {"status": "ok", "service": "CryptoPredict API v1.0"}
+    return {"status": "ok", "service": "CryptoPredict API", "mode": MODE}
+
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    # Liveness only: do not claim database or blockchain readiness.
+    return {"status": "alive", "mode": MODE, "readiness_verified": False}
+
+
+@app.get("/api/v1/system/status")
+async def system_status():
+    return {"mode": MODE, "api_writes_enabled": False, "auto_resolver_enabled": False,
+            "yield_accrual_enabled": False, "legacy_balances_verified": False,
+            "chain_state_verified": False}

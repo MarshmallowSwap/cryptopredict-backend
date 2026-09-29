@@ -1,10 +1,10 @@
-from supabase import create_client, Client
+from functools import lru_cache
 from app.core.config import settings
+from app.core.readonly_db import ReadOnlySupabase
 
-_client: Client | None = None
 
-def get_supabase() -> Client:
-    global _client
-    if _client is None:
-        _client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY)
-    return _client
+@lru_cache(maxsize=1)
+def get_supabase():
+    # Lazy construction: health checks and rejected requests need no DB client.
+    from supabase import create_client
+    return ReadOnlySupabase(create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_KEY))

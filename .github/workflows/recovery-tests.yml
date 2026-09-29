@@ -1,0 +1,37 @@
+name: Recovery safety tests
+on:
+  pull_request:
+  push:
+    branches: ["work/recovery-phase1-20260930"]
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: https://example.invalid
+      SUPABASE_SERVICE_KEY: local-test-only
+      RECOVERY_ADMIN_TOKEN: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install existing project requirements
+        run: python -m pip install -r requirements.txt
+      - name: Unit and ASGI safety tests
+        run: python -m unittest discover -s tests -v
+      - name: Import and smoke-test complete application without external services
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from app.main import app
+          import start
+          assert start.app is app
+          with TestClient(app) as client:
+              assert client.get('/health').json()['mode'] == 'recovery-read-only'
+              assert client.get('/api/v1/system/status').json()['api_writes_enabled'] is False
+              assert client.post('/api/v1/users/demo/deposit', content=b'{}').status_code == 503
+              assert client.get('/api/v1/users/demo').status_code == 503
+          PY

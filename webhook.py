@@ -1,90 +1,54 @@
 #!/usr/bin/env python3
+"""Recovery webhook: authenticate deliveries but NEVER execute a deployment.
+
+The former public default secret is removed. Rotation of the live webhook secret
+and deployment of this file must be performed separately by the operator.
 """
-GitHub Webhook — auto-deploy backend su ogni push al branch main
-Avviato come servizio separato sulla porta 9000
-"""
-import hmac, hashlib, subprocess, logging, os
-from fastapi import FastAPI, Request, HTTPException
+import hashlib
+import hmac
+import os
+import re
+from fastapi import FastAPI, HTTPException, Request
 import uvicorn
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
-log = logging.getLogger("webhook")
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
 
-app = FastAPI()
 
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "cp-webhook-2026")
-BACKEND_DIR    = "/root/cryptopredict-backend"
-SERVICE_NAME   = "cryptopredict"
+def secret_is_configured() -> bool:
+    return bool(re.fullmatch(r"[A-Za-z0-9_-]{48,256}", WEBHOOK_SECRET))
+
 
 def verify_signature(payload: bytes, signature: str) -> bool:
-    if not signature or not signature.startswith("sha256="):
+    if not secret_is_configured() or not re.fullmatch(r"sha256=[0-9a-f]{64}", signature):
         return False
-    expected = "sha256=" + hmac.new(
-        WEBHOOK_SECRET.encode(), payload, hashlib.sha256
-    ).hexdigest()
+    expected = "sha256=" + hmac.new(WEBHOOK_SECRET.encode(), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
-@app.post("/webhook/github")
+
+@app.post("/webhook/github", status_code=202)
 async def github_webhook(request: Request):
-    body = await request.body()
-    sig  = request.headers.get("X-Hub-Signature-256", "")
-
-    if not verify_signature(body, sig):
-        log.warning("Invalid webhook signature")
+    if not secret_is_configured():
+        raise HTTPException(503, "Webhook recovery access is not configured")
+    # Bound request consumption even if Content-Length is missing or incorrect.
+    chunks = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > 1_048_576:
+            raise HTTPException(413, "Webhook payload too large")
+        chunks.append(chunk)
+    body = b"".join(chunks)
+    if not verify_signature(body, request.headers.get("X-Hub-Signature-256", "")):
         raise HTTPException(401, "Invalid signature")
+    return {"status": "deployment_disabled", "mode": "recovery-read-only",
+            "reason": "Manual staging validation is required; no command executed"}
 
-    event   = request.headers.get("X-GitHub-Event", "")
-    payload = json.loads(body)
-    branch  = payload.get("ref", "")
-
-    log.info(f"Event: {event}, branch: {branch}")
-
-    # Solo push al branch main
-    if event != "push" or branch != "refs/heads/main":
-        return {"status": "ignored", "reason": "not main branch"}
-
-    commit = payload.get("head_commit", {}).get("message", "")[:60]
-    log.info(f"Deploying: {commit}")
-
-    try:
-        # git pull
-        r1 = subprocess.run(
-            ["git", "-C", BACKEND_DIR, "pull", "--rebase"],
-            capture_output=True, text=True, timeout=60
-        )
-        log.info(f"git pull: {r1.stdout.strip()}")
-        if r1.returncode != 0:
-            log.error(f"git pull failed: {r1.stderr}")
-            raise Exception(r1.stderr)
-
-        # pip install per nuove dipendenze
-        r2 = subprocess.run(
-            ["pip", "install", "-r", f"{BACKEND_DIR}/requirements.txt", "-q", "--break-system-packages"],
-            capture_output=True, text=True, timeout=120
-        )
-        if r2.returncode != 0:
-            log.warning(f"pip install warning: {r2.stderr[:200]}")
-
-        # restart servizio
-        r3 = subprocess.run(
-            ["systemctl", "restart", SERVICE_NAME],
-            capture_output=True, text=True, timeout=30
-        )
-        log.info(f"restart: {'ok' if r3.returncode == 0 else r3.stderr}")
-
-        return {
-            "status":  "deployed",
-            "commit":  commit,
-            "git_out": r1.stdout.strip()[:200]
-        }
-
-    except Exception as e:
-        log.error(f"Deploy failed: {e}")
-        raise HTTPException(500, f"Deploy failed: {str(e)}")
 
 @app.get("/webhook/health")
 async def health():
-    return {"status": "ok", "service": "github-webhook"}
+    return {"status": "alive", "service": "github-webhook", "auto_deploy_enabled": False}
+
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=9000)
+    uvicorn.run(app, host="127.0.0.1", port=9000)
