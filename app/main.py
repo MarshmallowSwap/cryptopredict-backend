@@ -35,6 +35,29 @@ async def health():
 
 @app.get("/api/v1/system/status")
 async def system_status():
-    return {"mode": MODE, "api_writes_enabled": False, "auto_resolver_enabled": False,
-            "yield_accrual_enabled": False, "legacy_balances_verified": False,
-            "chain_state_verified": False}
+    return {
+        "mode": MODE,
+        "api_writes_enabled": False,
+        "auto_resolver_enabled": False,
+        "yield_accrual_enabled": False,
+        "legacy_balances_verified": False,
+        "chain_state_verified": False,
+        "chain": {
+            "name": "Base Sepolia",
+            "chain_id": 84532,
+            "prediction_market": settings.PREDICTION_MARKET_ADDRESS,
+            "cpred": settings.CPRED_TOKEN_ADDRESS,
+            "mock_usdc": settings.MOCK_USDC_ADDRESS,
+            "mock_usdt": settings.MOCK_USDT_ADDRESS,
+            "position_market_enabled": settings.POSITION_MARKET_ADDRESS
+                != "0x0000000000000000000000000000000000000000",
+            "amm_enabled": settings.AMM_POOL_ADDRESS
+                != "0x0000000000000000000000000000000000000000",
+            "presale_staking_enabled": settings.PRESALE_STAKING_ADDRESS
+                != "0x0000000000000000000000000000000000000000",
+        },
+        "transport": {
+            "expected_public_scheme": "https",
+            "direct_uvicorn_public_exposure": False,
+        },
+    }
