@@ -14,6 +14,7 @@ PUBLIC_PATHS = frozenset({"/", "/health", "/api/v1/system/status",
                           "/api/v1/yield/stats"})
 UUID = r"[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
 PUBLIC_DETAIL = re.compile(rf"/api/v1/(?:markets|yield/market)/{UUID}/?")
+PUBLIC_RESOLUTION = re.compile(r"/api/v1/resolution/candidate/[0-9]+/?")
 
 
 class RecoveryWriteDisabled(RuntimeError):
@@ -90,7 +91,8 @@ class RecoveryGuard:
                                status_code=400)(scope, receive, safe_send)
             return
         path = scope.get("path", "")
-        if path.rstrip("/") not in (PUBLIC_PATHS - {"/"}) and path != "/" and not PUBLIC_DETAIL.fullmatch(path):
+        if (path.rstrip("/") not in (PUBLIC_PATHS - {"/"}) and path != "/"
+                and not PUBLIC_DETAIL.fullmatch(path) and not PUBLIC_RESOLUTION.fullmatch(path)):
             error = auth_error(scope, self.admin_token)
             if error:
                 status, detail = error
