@@ -50,7 +50,6 @@ class Settings(BaseSettings):
     PRESALE_STAKING_ADDRESS: str = "0x0000000000000000000000000000000000000000"
     MOCK_USDC_ADDRESS: str = "0x8A54f0e841CFCA5fA654912AF33cCD121D182311"
     MOCK_USDT_ADDRESS: str = "0xaBB48e1693Df04fb894843e52B239D5C5d0ab871"
-    TEAM_WALLET_PRIVATE_KEY: str = Field(default="", repr=False)
     NOWPAYMENTS_API_KEY: str = Field(default="", repr=False)
     TELEGRAM_BOT_TOKEN: str = Field(default="", repr=False)
     model_config = SettingsConfigDict(env_file=".env", extra="allow", hide_input_in_errors=True)
