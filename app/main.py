@@ -63,6 +63,17 @@ async def system_status():
             "presale_staking_enabled": settings.PRESALE_STAKING_ADDRESS
                 != "0x0000000000000000000000000000000000000000",
         },
+        "chain_index": {
+            "configured": True,
+            "source_of_truth": "blockchain",
+            "database_role": "index_only",
+            "automatic_scheduler": False,
+        },
+        "resolution": {
+            "mode": "evidence_first_manual_signature",
+            "automatic_signing": False,
+            "legacy_current_price_resolver": False,
+        },
         "transport": {
             "expected_public_scheme": "https",
             "direct_uvicorn_public_exposure": False,
