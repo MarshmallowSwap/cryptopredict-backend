@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import markets, positions, users, payouts, admin, chain
+from app.routers import markets, positions, users, payouts, admin, chain, resolution
 from app.services.yield_engine import router as yield_router
 from app.core.config import settings
 from app.core.recovery import MODE, RecoveryGuard
@@ -26,6 +26,7 @@ app.include_router(payouts.router, prefix="/api/v1/payouts", tags=["Payouts"])
 app.include_router(yield_router, prefix="/api/v1/yield", tags=["Yield"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(chain.router, prefix="/api/v1/chain", tags=["Recovery Chain Index"])
+app.include_router(resolution.router, prefix="/api/v1/resolution", tags=["Recovery Resolution"])
 
 
 @app.get("/")
