@@ -10,9 +10,14 @@ app = FastAPI(title="CryptoPredict API", version="1.1.0-recovery",
 app.state.recovery_admin_token = settings.RECOVERY_ADMIN_TOKEN
 app.add_middleware(RecoveryGuard, admin_token=settings.RECOVERY_ADMIN_TOKEN)
 # Last added middleware is outermost; valid CORS preflights stop here.
-app.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS,
-                   allow_credentials=False, allow_methods=["GET", "HEAD", "OPTIONS"],
-                   allow_headers=["Authorization", "Content-Type"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"https://cryptopredict(?:-[a-zA-Z0-9-]+)?-vaultworlds-projects\.vercel\.app",
+    allow_credentials=False,
+    allow_methods=["GET", "HEAD", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 
 app.include_router(markets.router, prefix="/api/v1/markets", tags=["Markets"])
 app.include_router(positions.router, prefix="/api/v1/positions", tags=["Positions"])
