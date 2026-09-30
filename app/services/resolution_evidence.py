@@ -18,29 +18,43 @@ from app.core.config import settings
 
 CHAIN_ID = 84532
 PRICE_SCALE = Decimal("100000000")
-MARKET_ABI = [{
-    "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-    "name": "markets",
-    "outputs": [
-        {"internalType": "uint256", "name": "id", "type": "uint256"},
-        {"internalType": "address", "name": "creator", "type": "address"},
-        {"internalType": "string", "name": "question", "type": "string"},
-        {"internalType": "string", "name": "category", "type": "string"},
-        {"internalType": "string", "name": "assetSymbol", "type": "string"},
-        {"internalType": "uint256", "name": "targetPrice", "type": "uint256"},
-        {"internalType": "bool", "name": "targetAbove", "type": "bool"},
-        {"internalType": "uint256", "name": "expiresAt", "type": "uint256"},
-        {"internalType": "uint256", "name": "yesPool", "type": "uint256"},
-        {"internalType": "uint256", "name": "noPool", "type": "uint256"},
-        {"internalType": "uint256", "name": "yieldAccrued", "type": "uint256"},
-        {"internalType": "uint8", "name": "status", "type": "uint8"},
-        {"internalType": "uint8", "name": "outcome", "type": "uint8"},
-        {"internalType": "address", "name": "resolver", "type": "address"},
-        {"internalType": "uint8", "name": "currency", "type": "uint8"},
-    ],
-    "stateMutability": "view",
-    "type": "function",
-}]
+MARKET_ABI = [
+    {
+        "inputs": [],
+        "name": "marketCount",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [{"internalType": "uint256", "name": "id", "type": "uint256"}],
+        "name": "getMarket",
+        "outputs": [{
+            "components": [
+                {"internalType": "uint256", "name": "id", "type": "uint256"},
+                {"internalType": "address", "name": "creator", "type": "address"},
+                {"internalType": "string", "name": "question", "type": "string"},
+                {"internalType": "string", "name": "category", "type": "string"},
+                {"internalType": "string", "name": "assetSymbol", "type": "string"},
+                {"internalType": "uint256", "name": "targetPrice", "type": "uint256"},
+                {"internalType": "bool", "name": "targetAbove", "type": "bool"},
+                {"internalType": "uint256", "name": "expiresAt", "type": "uint256"},
+                {"internalType": "uint256", "name": "yesPool", "type": "uint256"},
+                {"internalType": "uint256", "name": "noPool", "type": "uint256"},
+                {"internalType": "uint256", "name": "yieldAccrued", "type": "uint256"},
+                {"internalType": "enum PredictionMarket.MarketStatus", "name": "status", "type": "uint8"},
+                {"internalType": "enum PredictionMarket.Outcome", "name": "outcome", "type": "uint8"},
+                {"internalType": "address", "name": "resolver", "type": "address"},
+                {"internalType": "enum PredictionMarket.Currency", "name": "currency", "type": "uint8"},
+            ],
+            "internalType": "struct PredictionMarket.Market",
+            "name": "",
+            "type": "tuple",
+        }],
+        "stateMutability": "view",
+        "type": "function",
+    },
+]
 
 SUPPORTED_BINANCE = {
     "BTC": "BTCUSDT",
@@ -77,16 +91,10 @@ def get_market(market_id: int) -> dict:
         address=Web3.to_checksum_address(settings.PREDICTION_MARKET_ADDRESS),
         abi=MARKET_ABI,
     )
-    count_abi = [{
-        "inputs": [], "name": "marketCount",
-        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-        "stateMutability": "view", "type": "function",
-    }]
-    count_contract = w3.eth.contract(address=contract.address, abi=MARKET_ABI + count_abi)
-    count = int(count_contract.functions.marketCount().call())
+    count = int(contract.functions.marketCount().call())
     if market_id < 0 or market_id >= count:
         raise ValueError("Market not found")
-    return _market_tuple(count_contract.functions.markets(market_id).call())
+    return _market_tuple(contract.functions.getMarket(market_id).call())
 
 
 async def binance_price_evidence(market: dict) -> dict:
