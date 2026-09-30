@@ -67,8 +67,18 @@ async def list_markets(
     status: str = "open",
     category: Optional[str] = None,
     limit: int = Query(20, le=100),
-    offset: int = 0
+    offset: int = 0,
+    include_legacy: bool = False,
 ):
+    if not include_legacy:
+        return {
+            "markets": [],
+            "total": 0,
+            "source": "recovery_chain_index_not_enabled",
+            "legacy_hidden": True,
+            "warning": "Legacy Supabase markets are unverified and hidden by default.",
+        }
+
     sb = get_supabase()
     q = sb.table("markets").select("*").eq("status", status).order("created_at", desc=True)
     if category:
@@ -79,11 +89,19 @@ async def list_markets(
     for m in markets:
         expires = parse_dt(m["expires_at"])
         days_remaining = max(0, (expires - now_utc()).days)
+        m["legacy_unverified"] = True
+        m["source"] = "supabase_legacy"
         m["yield_info"] = compute_market_yield(
             pool_size=float(m.get("pool_size", 0)),
             days_remaining=days_remaining
         )
-    return {"markets": markets, "total": len(markets)}
+    return {
+        "markets": markets,
+        "total": len(markets),
+        "source": "supabase_legacy",
+        "legacy_hidden": False,
+        "warning": "Legacy data is not reconciled with the recovery contract.",
+    }
 
 
 @router.get("/{market_id}")
@@ -93,6 +111,9 @@ async def get_market(market_id: str):
     if not res.data:
         raise HTTPException(404, "Market not found")
     m = res.data
+    m["legacy_unverified"] = True
+    m["source"] = "supabase_legacy"
+    m["warning"] = "This record is not reconciled with the recovery contract."
     if m.get("asset_symbol"):
         try:
             m["current_price"] = await get_asset_price(m["asset_symbol"])
