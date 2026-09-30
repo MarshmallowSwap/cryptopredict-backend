@@ -37,6 +37,9 @@ class Settings(BaseSettings):
         return value
 
     BASE_SEPOLIA_RPC: str = "https://gateway.tenderly.co/public/base-sepolia"
+    RECOVERY_DEPLOYMENT_TX_HASH: str = "0xd5a65564232a9f3681c45c27e7829c34e8955ed7c9f67d46a7428e75dc351f74"
+    RECOVERY_INDEXER_CONFIRMATIONS: int = 12
+    RECOVERY_INDEXER_BLOCK_SPAN: int = 1000
     # Recovery deployment verified on Base Sepolia, 2026-09-30.
     PREDICTION_MARKET_ADDRESS: str = "0x76f9660a8801f97a8F5D1AC2036b9a9C22495436"
     # Legacy extensions stay disconnected during recovery.
