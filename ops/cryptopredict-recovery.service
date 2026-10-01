@@ -1,0 +1,23 @@
+[Unit]
+Description=CryptoPredict Recovery API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cryptopredict
+Group=cryptopredict
+WorkingDirectory=/opt/cryptopredict-recovery/current
+EnvironmentFile=/etc/cryptopredict-recovery.env
+ExecStart=/opt/cryptopredict-recovery/venv/bin/python start.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/cryptopredict-recovery
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
