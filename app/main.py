@@ -20,6 +20,8 @@ app.add_middleware(
 )
 
 app.include_router(markets.router, prefix="/api/v1/markets", tags=["Markets"])
+# Same implementation as /markets, exposed at the path already used in the PC test.
+app.include_router(markets.canonical_router, prefix="/api/v1/recovery/markets", tags=["Markets"])
 app.include_router(positions.router, prefix="/api/v1/positions", tags=["Positions"])
 app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
 app.include_router(payouts.router, prefix="/api/v1/payouts", tags=["Payouts"])
@@ -62,6 +64,14 @@ async def system_status():
                 != "0x0000000000000000000000000000000000000000",
             "presale_staking_enabled": settings.PRESALE_STAKING_ADDRESS
                 != "0x0000000000000000000000000000000000000000",
+        },
+        "market_catalog": {
+            "implementation": "app.services.chain_catalog",
+            "source": "base-sepolia-rpc",
+            "database_used": False,
+            "snapshot_tag": "safe",
+            "live_read_verified": False,
+            "original_api_path": "/api/v1/markets",
         },
         "chain_index": {
             "configured": True,
